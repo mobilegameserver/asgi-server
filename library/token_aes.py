@@ -7,7 +7,7 @@ from binascii import Error
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 
-from conf.conf import Conf
+from conf.conf import get_conf
 
 
 class Aes:
@@ -37,7 +37,7 @@ class Aes:
 
 class Token:
     def __init__(self):
-        self.conf = Conf()
+        self.conf = get_conf()
 
         self.data = {
             'access': int(datetime.now().timestamp()) + self.conf.token_access_lifetime_minutes * 60,
