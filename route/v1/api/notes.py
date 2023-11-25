@@ -23,7 +23,7 @@ async def add_note(request):
        text=data['text'],
        completed=data['completed']
     )
-    await database.execute(query)
+    await services_db.execute(query)
     return JSONResponse({
         'text': data['text'],
         'completed': data['completed']
