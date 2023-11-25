@@ -1,8 +1,8 @@
 import databases
-from conf.conf import Conf
+from conf.conf import get_conf
 
 
-conf = Conf()
+conf = get_conf()
 
 USERS_DB_URL = conf.env('USERS_DB_URL')
 SERVICES_DB_URL = conf.env('SERVICES_DB_URL')
