@@ -1,5 +1,3 @@
-import sys
-
 from starlette.applications import Starlette
 import uvicorn
 from starlette.middleware import Middleware
@@ -9,11 +7,11 @@ from starlette.middleware.cors import CORSMiddleware
 from library.auth import BasicAuthBackend
 from library.http_exc import exception_handlers
 from library.routes import routes
-from conf.conf import Conf
+from conf.conf import get_conf
 from library.lifespan import lifespan
 
 
-conf = Conf()
+conf = get_conf()
 app = Starlette(
     debug=(conf.phase == 'dev'),
     routes=routes,
