@@ -1,7 +1,7 @@
 import contextlib
 
-from lib.database import users_db, services_db, statistics_db
-from lib.channel import broadcast
+from library.database import users_db, services_db, statistics_db
+from library.channel import broadcast
 
 
 @contextlib.asynccontextmanager

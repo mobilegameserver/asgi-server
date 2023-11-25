@@ -1,6 +1,6 @@
 from starlette.responses import JSONResponse
 
-from lib.database import services_db
+from library.database import services_db
 from model.notes import notes
 
 

@@ -9,8 +9,8 @@ class ConfBase:
     phase = ''
     server_host = ''
     server_port = 0
+    redis_url = ''
     allow_origins = []
-    redis_server = ''
     token_access_lifetime_minutes = 14 * 24 * 60  # 14 days * 24 hours * 60 minutes
     token_refresh_lifetime_minutes = 28 * 24 * 60  # 28 days * 24 hours * 60 minutes
 

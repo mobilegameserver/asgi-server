@@ -1,5 +1,7 @@
 #!/bin/sh
 
+cd ..
+
 sudo rm -rf /usr/share/nginx/mock-project-01/web
 sudo cp -rf ./web /usr/share/nginx/mock-project-01
 

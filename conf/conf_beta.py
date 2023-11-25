@@ -19,4 +19,5 @@ class Conf(ConfBase):
         self.server_host = '0.0.0.0'
         self.server_port = 9871
 
+        self.redis_url = 'redis://localhost:6379'
         self.allow_origins = ['http://127.0.0.1:8000']

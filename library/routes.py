@@ -1,7 +1,7 @@
 from starlette.routing import Route, Mount, WebSocketRoute
 from starlette.staticfiles import StaticFiles
 from route.home import home, cors_test, auth_test
-from lib.channel import channel
+from library.channel import channel
 from route import v1
 
 routes = [
