@@ -1,9 +1,8 @@
 import anyio
 from broadcaster import Broadcast
-from conf.conf import get_conf
+from conf.conf import conf
 
 
-conf = get_conf()
 broadcast = Broadcast(conf.redis_url)
 
 

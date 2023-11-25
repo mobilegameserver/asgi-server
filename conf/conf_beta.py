@@ -1,7 +1,7 @@
-from conf.base_conf import BaseConf
+from conf.base_conf import _BaseConf
 
 
-class _Conf(BaseConf):
+class _Conf(_BaseConf):
     def __init__(self):
         super().__init__()
 
@@ -16,8 +16,4 @@ class _Conf(BaseConf):
         self.allow_origins = ['http://127.0.0.1:8000']
 
 
-_conf = _Conf()
-
-
-def get_conf():
-    return _conf
+conf = _Conf()

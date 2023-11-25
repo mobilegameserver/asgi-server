@@ -2,7 +2,7 @@ from hashlib import md5
 from starlette.config import Config
 
 
-class BaseConf:
+class _BaseConf:
     def __init__(self):
         self.env = Config('.env')
         self.aes_key = md5(self.env('AES_KEY').encode('utf-8')).digest()
