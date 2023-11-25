@@ -1,3 +1,6 @@
 conf.py
 conf.js
 .env
+.env.dev
+.env.beta
+
