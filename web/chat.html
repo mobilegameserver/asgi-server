@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <style>
+        #textarea1 {
+            width: 800px;
+            height: 600px
+        }
+
+        #input1 {
+            width: 800px
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <form id="form1">
+            <textarea id="textarea1"></textarea>
+            <br>
+            <input id="input1">
+        </form>
+    </main>
+</body>
+
+<script src="./conf.js"></script>
+<script src="./websocket-singleton.js"></script>
+<script>
+    window.addEventListener('load', function() {
+        const form1 = document.querySelector('#form1')
+        const textarea1 = document.querySelector('#textarea1')
+        const input1 = document.querySelector('#input1')
+
+        const _webSockSingleton = new WebSock(conf.rpcUrl)
+
+        WebSock.inst.addEventListener('error', function() {
+            alert('WebSock.inst.error')
+        })
+
+        WebSock.inst.addEventListener('close', function() {
+            textarea1.value += '\nWebSock.inst.closed'
+        })
+
+        WebSock.inst.addEventListener('open', function() {
+            WebSock.inst.send(JSON.stringify({
+                'token': ''
+            }))
+
+            textarea1.value += '\nWebSock.inst.opened'
+        })
+
+        WebSock.inst.addEventListener('message', function(evt) {
+            const message = JSON.parse(evt.data)
+
+            if (('text' in message) === false) {
+                return
+            }
+
+            textarea1.value += '\n' + message.name + ': ' + message.text
+        })
+
+        form1.addEventListener('submit', function (evt) {
+            evt.preventDefault()
+
+            const text = input1.value
+            if (text !== '') {
+                WebSock.inst.send(JSON.stringify({
+                    'text': text
+                }))
+                input1.value = ''
+            }
+        })
+    })
+</script>
+
+</html>

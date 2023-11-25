@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<main>
+    <button id="button1">button1</button>
+</main>
+
+<script>
+    window.addEventListener('load', function() {
+        const button1 = document.getElementById('button1')
+
+        button1.addEventListener('click', function() {
+            const xhr = new XMLHttpRequest()
+            xhr.addEventListener('error', function() {
+                alert('error')
+            })
+
+            xhr.addEventListener('load', function() {
+                alert(this.responseText)
+            })
+
+            xhr.open('GET', 'http://127.0.0.1:9871/cors_test', true)
+            xhr.send()
+
+        })
+    })
+</script>
+
+</body>
+</html>
