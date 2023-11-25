@@ -1,14 +1,7 @@
-from conf.conf_base import ConfBase
+from conf.base_conf import BaseConf
 
 
-class Conf(ConfBase):
-    _instance = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(ConfBase, cls).__new__(cls)
-        return cls._instance
-
+class _Conf(BaseConf):
     def __init__(self):
         super().__init__()
 
@@ -21,3 +14,10 @@ class Conf(ConfBase):
 
         self.redis_url = 'redis://localhost:6379'
         self.allow_origins = ['http://127.0.0.1:8000']
+
+
+_conf = _Conf()
+
+
+def get_conf():
+    return _conf
