@@ -12,7 +12,7 @@ async def channel(websocket):
 
     async with anyio.create_task_group() as task_group:
         # run until first is complete
-        async def run_channel_receiver() -> None:
+        async def run_channel_receiver():
             await channel_receiver(websocket=websocket)
             task_group.cancel_scope.cancel()
 
