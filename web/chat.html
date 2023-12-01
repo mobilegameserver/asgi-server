@@ -32,9 +32,9 @@
 <script src="./websocket-singleton.js"></script>
 <script>
     window.addEventListener('load', function() {
-        const form1 = document.querySelector('#form1')
-        const textarea1 = document.querySelector('#textarea1')
-        const input1 = document.querySelector('#input1')
+        const form1 = document.getElementById('form1')
+        const textarea1 = document.getElementById('textarea1')
+        const input1 = document.getElementById('input1')
 
         const _webSockSingleton = new WebSock(conf.rpcUrl)
 

@@ -1,0 +1,22 @@
+# pip3 install uvicorn
+# sudo vim /etc/systemd/system/uvicorn.service
+# sudo systemctl daemon-reload
+# sudo systemctl enable uvicorn.service
+# sudo systemctl start uvicorn.service
+# sudo systemctl status uvicorn.service
+
+[Unit]
+Description=uvicorn
+After=network.target
+
+[Service]
+WorkingDirectory=/home/ssm-user/GitHub/project-01/uvicorn
+ExecStart=/home/ssm-user/GitHub/project-01/uvicorn/venv/bin/uvicorn \
+        --ssl-certfile=/etc/letsencrypt/live/project-01.axtha.com/fullchain.pem \
+        --ssl-keyfile=/etc/letsencrypt/live/project-01.axtha.com/privkey.pem \
+        --host 0.0.0.0 \
+        --port 9871 \
+        main:app
+
+[Install]
+WantedBy=multi-user.target

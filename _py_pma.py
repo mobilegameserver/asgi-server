@@ -1,4 +1,5 @@
-import time
+import logging
+import secrets
 from wsgiref.simple_server import make_server, WSGIServer
 from socketserver import ThreadingMixIn
 import os
@@ -13,6 +14,8 @@ import cgi
 from hashlib import md5
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 from pymysql.cursors import DictCursor
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
 
 
 # database
@@ -186,44 +189,102 @@ def epoch_str(cfg):
 
 
 # token
+class Aes:
+    def __init__(self, key):
+        self.key = key
+
+    def encrypt(self, plain_text):
+        iv = secrets.token_bytes(AES.block_size)
+        cipher = AES.new(self.key, AES.MODE_GCM, iv)
+
+        encrypted = cipher.encrypt(pad(plain_text.encode('utf-8'), AES.block_size))
+        urlsafe_b64encoded = urlsafe_b64encode(iv + encrypted).decode('utf-8')
+
+        return urlsafe_b64encoded
+
+    def decrypt(self, b64encoded):
+        try:
+            encrypted = urlsafe_b64decode(b64encoded)
+            cipher = AES.new(self.key, AES.MODE_GCM, encrypted[:AES.block_size])
+
+            result = unpad(cipher.decrypt(encrypted[AES.block_size:]), AES.block_size).decode('utf-8')
+        except ValueError as val_err:
+            result = val_err
+
+        return result
+
+
 class Token:
     def __init__(self, cfg):
         self.cfg = cfg
-        self.exp = {
+        self.data = {
             'access': int(datetime.now().timestamp()) + cfg.token_access_lifetime_minutes * 60,
             'refresh': int(datetime.now().timestamp()) + cfg.token_refresh_lifetime_minutes * 60,
         }
-        self.data = {}
 
     def load(self, s):
-        if len(s) < 32:
+        if s == '':
             return False
 
-        b64_encoded = s[:-32]
-        md5_hex_digest = s[-32:]
-
-        if md5_hex_digest != md5((b64_encoded + self.cfg.secret_key).encode('utf-8')).hexdigest():
+        aes = Aes(self.cfg.aes_key)
+        decrypted = aes.decrypt(s)
+        if isinstance(decrypted, ValueError) or decrypted == '':
             return False
 
-        json_loaded = json.loads(urlsafe_b64decode(b64_encoded))
-        self.exp = json_loaded.get('exp', {})
-
-        if int(self.exp.get('access', 0)) < int(datetime.now().timestamp()):
+        try:
+            json_loaded = json.loads(decrypted)
+        except ValueError:
             return False
 
-        self.data = json_loaded.get('data', {})
+        if int(json_loaded.get('access', 0)) < int(datetime.now().timestamp()):
+            return False
+
+        self.data = json_loaded
         return True
 
     def __str__(self):
-        json_dumped = json.dumps({
-            'exp': self.exp,
-            'data': self.data,
-        }).encode('utf-8')
+        aes = Aes(self.cfg.aes_key)
+        return aes.encrypt(json.dumps(self.data))
 
-        b64_encoded = urlsafe_b64encode(json_dumped).decode('utf-8')
-        md5_hex_digest = md5((b64_encoded + self.cfg.secret_key).encode('utf-8')).hexdigest()
 
-        return b64_encoded + md5_hex_digest
+# class TokenMd5:
+#     def __init__(self, cfg):
+#         self.cfg = cfg
+#         self.exp = {
+#             'access': int(datetime.now().timestamp()) + cfg.token_access_lifetime_minutes * 60,
+#             'refresh': int(datetime.now().timestamp()) + cfg.token_refresh_lifetime_minutes * 60,
+#         }
+#         self.data = {}
+#
+#     def load(self, s):
+#         if len(s) < 32:
+#             return False
+#
+#         b64_encoded = s[:-32]
+#         md5_hex_digest = s[-32:]
+#
+#         if md5_hex_digest != md5((b64_encoded + self.cfg.secret_key).encode('utf-8')).hexdigest():
+#             return False
+#
+#         json_loaded = json.loads(urlsafe_b64decode(b64_encoded))
+#         self.exp = json_loaded.get('exp', {})
+#
+#         if int(self.exp.get('access', 0)) < int(datetime.now().timestamp()):
+#             return False
+#
+#         self.data = json_loaded.get('data', {})
+#         return True
+#
+#     def __str__(self):
+#         json_dumped = json.dumps({
+#             'exp': self.exp,
+#             'data': self.data,
+#         }).encode('utf-8')
+#
+#         b64_encoded = urlsafe_b64encode(json_dumped).decode('utf-8')
+#         md5_hex_digest = md5((b64_encoded + self.cfg.secret_key).encode('utf-8')).hexdigest()
+#
+#         return b64_encoded + md5_hex_digest
 
 
 # request
@@ -260,7 +321,7 @@ def request_auth_token(env):
 
 
 def request_form(env):
-    return cgi.FieldStorage(env.get('wsgi.input'), environ=env, keep_blank_values=1)
+    return cgi.FieldStorage(fp=env.get('wsgi.input'), environ=env, keep_blank_values=1)
 
 
 def request_json(env):
@@ -461,7 +522,7 @@ def mysql_connect_form(func, _env, _token, _cfg):
     <form class="form1" method="post" action="/mysql/connect">
         <input name="host" placeholder="host" type="text" value="127.0.0.1"><br>
         <input name="user" placeholder="user" type="text" value="user"><br>
-        <input name="password" placeholder="password" type="text" value="password"><br>
+        <input name="password" placeholder="password" type="password" value="password"><br>
         <input name="database" placeholder="database" type="text" value="mysql"><br>
         <input name="port" placeholder="port" type="text" value="3306"><br>
         <input name="submit" type="submit" value="submit">
@@ -1294,9 +1355,14 @@ def mysql_select_rows(func, _env, _token, _cfg):
         column_names = []
         pk_column = ''
         for desc in descriptions:
-            column_names.append(desc['Field'])
             if desc['Key'] == 'PRI' and pk_column == '':
                 pk_column = desc['Field']
+
+            var_type, def_value = var_type_and_def_value(desc['Type'])
+            if var_type == 'text':
+                continue
+
+            column_names.append(desc['Field'])
 
         if pk_column == '':
             pk_column = column_names[0]
@@ -1305,7 +1371,8 @@ def mysql_select_rows(func, _env, _token, _cfg):
         if params.order_by == '':
             params.order_by = pk_column
 
-        sql_parts = ['SELECT * FROM `{}`.`{}`'.format(params.database, params.table)]
+        sql_parts = ['SELECT {} FROM `{}`.`{}`'.format('`' + '`, `'.join(column_names) + '`', params.database,
+                                                       params.table)]
         values = []
         if params.field1 != '' and params.keyword1 != '':
             sql_parts.append('WHERE `{}`'.format(params.field1))
@@ -1813,11 +1880,19 @@ def mysql_update_row(func, _env, _token, _cfg):
 # config
 class Config:
     def __init__(self):
-        self.secret_key = '__this_is_your_secret_key__'
+        _secret_key = '__this_is_your_secret_key__'
+
+        self.phase = 'develop'
+        self.aes_key = md5(_secret_key.encode('utf-8')).digest()
+
         self.debug = True
 
         self.httpd_host = '0.0.0.0'
-        self.httpd_port = 9872
+        self.httpd_port = 9870
+
+        self.allowed_hosts = [
+            '127.0.0.1',
+        ]
 
         self.token_access_lifetime_minutes = 14 * 24 * 60  # 14 days * 24 hours * 60 minutes
         self.token_refresh_lifetime_minutes = 28 * 24 * 60  # 28 days * 24 hours * 60 minutes
@@ -1825,23 +1900,12 @@ class Config:
         self.max_limit = 50
         self.datetime_format = '%Y-%m-%d %H:%M:%S'
 
-        _api = MysqlConnSettings()
-        _api.host = '127.0.0.1'
-        _api.user = 'root'
-        _api.password = 'root'
-        _api.database = 'mysql'
-        _api.port = 3306
-
-        self.mysql_conn_settings = {
-            'api': _api,
-        }
-
 
 # application
 def app(env, func):
     cfg = Config()
 
-    handlers = {
+    routes = {
         '/': index,
 
         '/mysql/connect_form': mysql_connect_form,
@@ -1873,11 +1937,20 @@ def app(env, func):
         '/mysql/update_row': mysql_update_row,
     }
 
+    remote_addr = env.get('HTTP_X_FORWARDED_FOR', '')
+    if remote_addr == '':
+        remote_addr = env.get('REMOTE_ADDR', '')
+    else:
+        remote_addr = remote_addr.split(',')[-1].strip()
+
+    if remote_addr not in cfg.allowed_hosts:
+        return response_status(func, '511 Network Authentication Required')
+
     request_method = env.get('REQUEST_METHOD', 'GET')
     path_info = env.get('PATH_INFO', '/not_found')
 
-    handler = handlers.get(path_info, None)
-    if handler is not None:
+    route = routes.get(path_info, None)
+    if route is not None:
         cookie = request_cookie(env)
         cookie_token = cookie.get('token', '')
         auth_token = request_auth_token(env)
@@ -1888,7 +1961,7 @@ def app(env, func):
         elif auth_token != '' and not token.load(auth_token):
             return response_status(func, '401 Unauthorized')
 
-        return handler(func, env, token, cfg)
+        return route(func, env, token, cfg)
 
     if not path_info.startswith('/web/'):
         return response_status(func, '404 Not Found')
@@ -1903,30 +1976,28 @@ def app(env, func):
     if not os.path.isfile(file_path) or not os.access(file_path, os.R_OK):
         return response_status(func, '403 Forbidden', message='not a file or not readable')
 
-    if request_method not in ['GET', 'HEAD']:
+    if request_method not in ['GET']:
         return response_status(func, '405 Method Now Allowed')
 
     content_type, _ = mimetypes.guess_type(file_path)
     if content_type is None:
         content_type = 'application/octet-stream'
 
-    func('200 OK', [
-        ('Content-Type', content_type),
-        ('Content-Length', str(os.stat(file_path).st_size)),
-    ])
-
-    if request_method == 'HEAD':
-        return []
-
     f = None
-    f_read = ['500 Internal Server Error'.encode('utf-8')]
     try:
         f = open(file_path, 'rb')
         f_read = f.read()
+
+        func('200 OK', [
+            ('Content-Type', content_type),
+            ('Content-Length', str(os.stat(file_path).st_size)),
+        ])
+        return [f_read]
+    except Exception as exc:
+        return response_status(func, '500 Internal Server Error', message=str(exc))
     finally:
         if f is not None:
             f.close()
-        return [f_read]
 
 
 # main
@@ -1936,16 +2007,20 @@ class ServerClass(ThreadingMixIn, WSGIServer):
 
 def main():
     cfg = Config()
-    httpd = make_server(cfg.httpd_host, cfg.httpd_port, app, server_class=ServerClass)
 
+    httpd = None
     try:
+        httpd = make_server(cfg.httpd_host, cfg.httpd_port, app, server_class=ServerClass)
         print('serving on port {}:{}..'.format(cfg.httpd_host, cfg.httpd_port))
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        httpd.server_close()
 
-        # wait for self._threads.join()
-        time.sleep(1)
+        httpd.serve_forever()
+    except Exception as exc:
+        logging.error(str(exc))
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if httpd is not None:
+            httpd.server_close()
 
 
 if __name__ == '__main__':

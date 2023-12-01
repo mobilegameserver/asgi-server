@@ -1,7 +1,14 @@
 .idea/
 
 conf.py
+conf_beta.py
+conf_prod.py
+
 conf.js
+
 .env
-.env.dev
 .env.beta
+.env.prod
+
+_py_test.json
+__pycache__/

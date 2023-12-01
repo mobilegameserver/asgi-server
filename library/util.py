@@ -1,3 +1,4 @@
+import sys
 from urllib.parse import urlparse
 import pymysql
 from conf.conf import conf
@@ -8,6 +9,9 @@ import redis
 def check_all_conns_synchronously():
     for k in ['USERS_DB_URL', 'SERVICES_DB_URL', 'STATISTICS_DB_URL']:
         dcs = urlparse(conf.env(k))
+
+        if dcs.scheme == 'sqlite':
+            continue
 
         try:
             db_conn = pymysql.connect(
@@ -23,7 +27,8 @@ def check_all_conns_synchronously():
             db_conn.query('SELECT 1')
             db_conn.close()
         except pymysql.Error as err:
-            raise RuntimeError(str(err))
+            print('ERROR: mysql connection failed, ' + str(err))
+            sys.exit(1)
 
     rcs = urlparse(conf.redis_url)
     try:
@@ -31,4 +36,5 @@ def check_all_conns_synchronously():
         rds_conn.get('one')
         rds_conn.close()
     except redis.RedisError as err:
-        raise RuntimeError(str(err))
+        print('ERROR: redis connection failed, ' + str(err))
+        sys.exit(1)

@@ -1,3 +1,5 @@
+import sys
+
 from conf.base_conf import _BaseConf
 
 
@@ -7,7 +9,8 @@ class _Conf(_BaseConf):
 
         self.phase = 'dev'
         if self.phase != self.env('PHASE'):
-            raise RuntimeError('phase not matched')
+            print('ERROR: phase not matched')
+            sys.exit(1)
 
         self.server_host = '127.0.0.1'
         self.server_port = 9871

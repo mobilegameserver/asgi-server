@@ -1,4 +1,3 @@
-
 import os
 import sys
 from os import listdir, environ
@@ -230,9 +229,9 @@ def print_usage():
     db_names_joined = '[' + '|'.join(db_names) + ']'
 
     print('Usage:')
-    print('\tpython3 ./migration.py create {} {}'.format(phases_joined, db_names_joined))
-    print('\tpython3 ./migration.py execute {} {}'.format(phases_joined, db_names_joined))
-    print('\tpython3 ./migration.py squash {} {}'.format(phases_joined, db_names_joined))
+    print('\tpython3 ./_py_migration.py create {} {}'.format(phases_joined, db_names_joined))
+    print('\tpython3 ./_py_migration.py execute {} {}'.format(phases_joined, db_names_joined))
+    print('\tpython3 ./_py_migration.py squash {} {}'.format(phases_joined, db_names_joined))
 
 
 def main():

@@ -1,9 +1,15 @@
+import os
+import sys
 from hashlib import md5
 from starlette.config import Config
 
 
 class _BaseConf:
     def __init__(self):
+        if not os.path.exists('.env'):
+            print('ERROR: ./.env does not exist')
+            sys.exit(1)
+
         self.env = Config('.env')
         self.aes_key = md5(self.env('AES_KEY').encode('utf-8')).digest()
 
